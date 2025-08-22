@@ -175,7 +175,7 @@ class FunnyPDF(FPDF):
         self.cell(0, 8, "Chaotic PDF Reader – Fun Edition", align="C")
         self.ln(10)
 
-    def footer(self):n
+    def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", size=8)
         self.cell(0, 10, f"Page {self.page_no()}  •  generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", align="C")

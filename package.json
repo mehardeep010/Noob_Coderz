@@ -1,8 +1,10 @@
 {
-  "name": "chaotic-pdf-reader",
+  "name": "pdf-fun-studio",
   "version": "1.0.0",
+  "description": "A unified web application for viewing PDFs and generating funny versions",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {

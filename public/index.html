@@ -2,47 +2,916 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chaotic PDF Reader</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Fun Studio — View & Funny-ify PDFs</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent-1: #6a11cb;
+      --accent-2: #2575fc;
+      --btn-bg1: linear-gradient(135deg,#ff6ec4,#7873f5);
+      --btn-bg2: linear-gradient(135deg,#4a90e2,#357abd);
+      --bg: linear-gradient(135deg,#eef6ff,#f7fbff);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background:var(--bg);
+      color:#111;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      padding:0;
+      min-height:100vh;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    
+    .header p {
+      font-size: 1.1rem;
+      color: #666;
+      font-weight: 400;
+    }
+
+    /* Tab Navigation */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: rgba(255,255,255,0.8);
+      padding: 8px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .tab-btn {
+      padding: 12px 24px;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #666;
+    }
+    
+    .tab-btn.active {
+      background: var(--btn-bg1);
+      color: white;
+      box-shadow: 0 4px 15px rgba(120,115,245,0.3);
+    }
+    
+    .tab-btn:hover:not(.active) {
+      background: rgba(120,115,245,0.1);
+      color: var(--accent-1);
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      width: 100%;
+      max-width: 1200px;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Top control bar */
+    #controls {
+      width:100%;
+      max-width:1200px;
+      margin: 18px;
+      padding:14px 18px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      justify-content:space-between;
+      background: linear-gradient(90deg,#f8f9ff, #eef3ff);
+      border-radius:14px;
+      box-shadow: 0 8px 24px rgba(20,30,70,0.06);
+      border: 1px solid rgba(50,70,120,0.04);
+    }
+
+    .controls-left, .controls-center, .controls-right {
+      display:flex; gap:12px; align-items:center;
+    }
+
+    /* Big friendly buttons */
+    .btn {
+      appearance:none;
+      -webkit-appearance:none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      color: white;
+      background: var(--btn-bg1);
+      box-shadow: 0 8px 18px rgba(120,80,200,0.16);
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    .btn.secondary {
+      background: linear-gradient(135deg,#ffffff, #eef3ff);
+      color: var(--accent-2);
+      border: 1px solid rgba(60,100,200,0.08);
+      box-shadow: 0 6px 14px rgba(30,60,120,0.06);
+    }
+    .btn.success {
+      background: linear-gradient(135deg, var(--success), #059669);
+    }
+    .btn:active{ transform: translateY(1px) }
+    .btn:hover{ transform: translateY(-3px) }
+    
+    #fileInput {
+      padding: 12px 20px;
+      font-size: 18px;
+      font-weight: 500;
+      color: white;
+      background: var(--btn-bg2);
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    #fileInput:hover {
+      background: linear-gradient(135deg, #5aa0f2, #4686d1);
+      transform: scale(1.05);
+    }
+
+    #fileInput:active {
+      transform: scale(0.98);
+      background: linear-gradient(135deg, #3b7bc0, #2a5b99);
+    }
+
+    input[type="file"]{
+      padding: 8px 12px;
+      font-size: 15px;
+      border-radius:10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      background: white;
+      cursor: pointer;
+    }
+
+    #pageInfo {
+      font-size:16px;
+      color:#23304a;
+      background:rgba(255,255,255,0.9);
+      padding:8px 12px;
+      border-radius:10px;
+      box-shadow: 0 6px 12px rgba(16,30,66,0.05);
+    }
+
+    /* Canvas area */
+    #canvasWrapper {
+      width:100%;
+      flex:1;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding: 18px;
+    }
+    
+    #canvasContainer {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f9f9f9;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    canvas {
+      max-width: 95%;
+      max-height: 95%;
+      border: 3px solid #fff;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Empty state */
+    #noPdf {
+      text-align:center;
+      color:#384a6a;
+      font-size:20px;
+      padding: 24px;
+    }
+
+    /* Funny PDF Controls */
+    .funny-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 20px;
+      padding: 20px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-group label {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+    
+    .control-group select,
+    .control-group input {
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+    
+    .control-group select:focus,
+    .control-group input:focus {
+      outline: none;
+      border-color: var(--accent-2);
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-2);
+    }
+
+    /* Status Messages */
+    .status {
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin: 10px 20px;
+      font-weight: 500;
+      text-align: center;
+      display: none;
+    }
+    
+    .status.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .status.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .status.info {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* Loading Spinner */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--accent-2);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive small screens */
+    @media (max-width:720px){
+      .header h1 { font-size: 2rem; }
+      .tabs { flex-direction: column; }
+      #controls { flex-direction:column; gap:10px; padding:12px }
+      .controls-left,.controls-center,.controls-right{ width:100%; justify-content:center }
+      input[type="file"]{ width:100% }
+      .funny-controls { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Chaotic PDF Reader 🤡📄</h1>
-    <form id="uploadForm">
-      <label class="file">
-        <input id="file" type="file" accept="application/pdf" required />
-      </label>
+  <div class="header">
+    <h1>PDF Fun Studio</h1>
+    <p>View PDFs with style and transform them into hilarious versions! 🎭</p>
+  </div>
 
-      <div class="row">
-        <label>Style:
-          <select id="style">
-            <option value="mild">mild</option>
-            <option value="spicy">spicy</option>
-            <option value="chaotic">chaotic</option>
-          </select>
-        </label>
-        <label>Cat every N paras:
-          <input id="catEvery" type="number" value="4" min="1" />
-        </label>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="viewer">📖 PDF Viewer</button>
+    <button class="tab-btn" data-tab="funny">🎭 Funny PDF Generator</button>
+  </div>
+
+  <!-- PDF Viewer Tab -->
+  <div id="viewer" class="tab-content active">
+         <div id="controls">
+       <div class="controls-left">
+         <input id="fileInput" type="file" accept="application/pdf" />
+         <button class="btn secondary" id="prevPage">⬅ Prev</button>
+         <button class="btn secondary" id="nextPage">Next ➡</button>
+         <button class="btn" id="testBtn" style="background: #ff6b6b;">🧪 Test</button>
+       </div>
+
+      <div class="controls-center">
+        <div id="pageInfo">No PDF loaded</div>
       </div>
 
-      <div class="row">
-        <label><input id="cats" type="checkbox" checked /> Insert cats</label>
-        <label><input id="emoji" type="checkbox" checked /> Sprinkle emojis</label>
-        <label><input id="useAI" type="checkbox" /> Use AI rewrite (requires server key)</label>
+      <div class="controls-right">
+        <button class="btn" id="zoomOut">➖ Zoom Out</button>
+        <button class="btn" id="zoomIn">➕ Zoom In</button>
       </div>
+    </div>
 
-      <button type="submit">Make it funny</button>
-    </form>
-
-    <div id="status" class="muted"></div>
-
-    <div id="result" class="result hidden">
-      <a id="download" download="funny.pdf">⬇ Download Funny PDF</a>
-      <iframe id="preview" title="Preview" frameborder="0"></iframe>
+    <div id="canvasWrapper">
+      <div id="canvasContainer">
+        <div id="noPdf">Upload a PDF to start — or drag & drop into the file picker.</div>
+        <canvas id="pdf-canvas" style="display:none;"></canvas>
+      </div>
     </div>
   </div>
-  <script src="/client.js"></script>
+
+  <!-- Funny PDF Generator Tab -->
+  <div id="funny" class="tab-content">
+    <div class="funny-controls">
+      <div class="control-group">
+        <label for="funnyFileInput">Select PDF File:</label>
+        <input id="funnyFileInput" type="file" accept="application/pdf" />
+      </div>
+      
+      <div class="control-group">
+        <label for="styleSelect">Humor Style:</label>
+        <select id="styleSelect">
+          <option value="mild">😊 Mild (Gentle fun)</option>
+          <option value="spicy">🌶️ Spicy (Moderate chaos)</option>
+          <option value="chaotic">🤪 Chaotic (Maximum chaos)</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="catEvery">Insert Cats Every:</label>
+        <input id="catEvery" type="number" min="1" max="10" value="4" />
+        <span style="font-size: 12px; color: #666;">paragraphs</span>
+      </div>
+      
+      <div class="control-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableEmoji" checked />
+          <label for="enableEmoji">Add Emojis ✨</label>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableCats" checked />
+          <label for="enableCats">Insert Random Cats 🐱</label>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableAI" />
+          <label for="enableAI">AI Rewrite (Requires API Key)</label>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 20px;">
+      <button id="generateFunny" class="btn success" style="font-size: 18px; padding: 15px 30px;">
+        🎭 Generate Funny PDF!
+      </button>
+    </div>
+
+    <div id="status" class="status"></div>
+    
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Processing your PDF... This may take a few moments!</p>
+    </div>
+  </div>
+
+  <script type="module">
+  let pdfjsLib;
+  
+  // Load PDF.js library
+  async function loadPDFJS() {
+    try {
+      console.log('Loading PDF.js library...');
+      
+      // Try to load the library
+      const module = await import('./pdf.mjs');
+      pdfjsLib = module.default || module;
+      
+      console.log('PDF.js library loaded successfully:', pdfjsLib);
+      console.log('Available methods:', Object.keys(pdfjsLib));
+      
+      // Initialize the PDF viewer after library loads
+      initializePDFViewer();
+    } catch (error) {
+      console.error('Failed to load PDF.js library:', error);
+      console.error('Error details:', error.message, error.stack);
+      
+      // Try alternative loading method
+      try {
+        console.log('Trying alternative loading method...');
+        pdfjsLib = await import('./pdf.mjs').then(m => m.default || m);
+        console.log('Alternative loading successful:', pdfjsLib);
+        initializePDFViewer();
+      } catch (altError) {
+        console.error('Alternative loading also failed:', altError);
+        alert('Error: Failed to load PDF.js library. Please check the console for details.');
+        
+        // Still initialize basic functionality
+        initializePDFViewer();
+      }
+    }
+  }
+  
+  // Load the library immediately
+  loadPDFJS();
+  
+  // Initialize PDF viewer functionality
+  function initializePDFViewer() {
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      console.log('Tab button clicked:', btn.textContent);
+      
+      // Remove active class from all tabs and buttons
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      // Add active class to clicked button and corresponding content
+      btn.classList.add('active');
+      const tabId = btn.getAttribute('data-tab');
+      console.log('Switching to tab:', tabId);
+      document.getElementById(tabId).classList.add('active');
+    });
+  });
+
+  // PDF Viewer functionality
+  const fileInput = document.getElementById('fileInput');
+  const canvas = document.getElementById('pdf-canvas');
+  const canvasContainer = document.getElementById('canvasContainer');
+  const noPdf = document.getElementById('noPdf');
+
+  const prevPageBtn = document.getElementById('prevPage');
+  const nextPageBtn = document.getElementById('nextPage');
+  const pageInfo = document.getElementById('pageInfo');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+  const testBtn = document.getElementById('testBtn');
+
+  console.log('Initializing PDF viewer...');
+  console.log('Canvas element:', canvas);
+  console.log('Canvas context:', canvas.getContext('2d'));
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Check if pdfjsLib is loaded
+  if (!pdfjsLib || typeof pdfjsLib === 'undefined') {
+    console.error('pdfjsLib is not loaded!');
+    alert('Error: PDF.js library failed to load. Please check the console for details.');
+    return;
+  }
+  
+  console.log('pdfjsLib loaded successfully:', pdfjsLib);
+  
+  // Set up PDF.js worker
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs';
+    console.log('Worker source set to:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  } catch (error) {
+    console.error('Failed to set worker source:', error);
+  }
+
+  let pdfDoc = null;
+  let currentPage = 1;
+  let scale = 1.25;
+  const MIN_SCALE = 0.4;
+  const MAX_SCALE = 4.0;
+
+  // Helpers
+  function drawColoredDots(ctx, w, h) {
+    const dotCount = 5;
+    for (let i = 0; i < dotCount; i++) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      const radius = Math.random() * 3 + 3;
+      const opacity = (Math.random() * 0.1 + 0.6).toFixed(2);
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${Math.floor(Math.random()*220)}, ${Math.floor(Math.random()*220)}, ${Math.floor(Math.random()*220)}, ${opacity})`;
+      ctx.arc(x, y, radius, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function addOverlay(ctx, w, h) {
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = `hsl(${Math.random()*360}, 60%, 70%)`;
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      ctx.arc(x, y, Math.random()*3 + 0.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Render logic
+  async function renderPage(pageNum) {
+    if (!pdfDoc) {
+      console.log('No PDF document loaded');
+      return;
+    }
+    
+    try {
+      console.log(`Rendering page ${pageNum}...`);
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+
+      console.log('Viewport dimensions:', viewport.width, 'x', viewport.height);
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = canvas.width + 'px';
+      canvas.style.height = canvas.height + 'px';
+
+      console.log('Canvas updated, new dimensions:', canvas.width, 'x', canvas.height);
+
+      noPdf.style.display = 'none';
+      canvas.style.display = 'block';
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      ctx.save();
+
+      const angle = (Math.random() * 4 - 2) * Math.PI / 180;
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(angle);
+      ctx.translate(-canvas.width/2, -canvas.height/2);
+
+      const marginShiftX = (Math.random() - 0.5) * 18;
+      const marginShiftY = (Math.random() - 0.5) * 18;
+      ctx.translate(marginShiftX, marginShiftY);
+
+      console.log('Starting page render...');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      console.log('Page render completed');
+
+      ctx.restore();
+
+      drawColoredDots(ctx, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = 'rgba(30,30,30,0.6)';
+      ctx.font = '600 14px Poppins, Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Page ${Math.floor(Math.random()*9)+1}`, canvas.width - 18, canvas.height - 14);
+      ctx.restore();
+
+      addOverlay(ctx, canvas.width, canvas.height);
+
+      pageInfo.textContent = `Page ${pageNum} / ${pdfDoc.numPages} · ${Math.round(scale*100)}%`;
+      prevPageBtn.disabled = pageNum <= 1;
+      nextPageBtn.disabled = pageNum >= pdfDoc.numPages;
+      
+      console.log('Page rendering completed successfully');
+    } catch (err) {
+      console.error('renderPage error', err);
+      alert('Error rendering page: ' + err.message);
+    }
+  }
+
+  // File load handler for viewer
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    
+    console.log('File selected:', file.name, file.size);
+    
+    // Show immediate feedback
+    pageInfo.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    
+    // Always show file info, even if PDF.js fails
+    noPdf.style.display = 'none';
+    canvas.style.display = 'block';
+    
+    // Set canvas size for file info display
+    canvas.width = 600;
+    canvas.height = 400;
+    canvas.style.width = '600px';
+    canvas.style.height = '400px';
+    
+    // Draw file info
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('File Selected Successfully!', canvas.width / 2, 80);
+    ctx.fillText('Name: ' + file.name, canvas.width / 2, 140);
+    ctx.fillText('Size: ' + (file.size / 1024).toFixed(1) + ' KB', canvas.width / 2, 180);
+    ctx.fillText('Type: ' + file.type, canvas.width / 2, 220);
+    
+    // Check if pdfjsLib is available
+    if (!pdfjsLib) {
+      console.error('PDF.js library not loaded');
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillText('PDF.js library not loaded', canvas.width / 2, 280);
+      ctx.fillText('Basic file info shown instead', canvas.width / 2, 320);
+      return;
+    }
+    
+    try {
+      const buf = await file.arrayBuffer();
+      console.log('File loaded, size:', buf.byteLength);
+      
+      console.log('Loading PDF with pdfjsLib...');
+      pageInfo.textContent = 'Processing PDF...';
+      
+      try {
+        pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+        console.log('PDF loaded successfully, pages:', pdfDoc.numPages);
+        
+        currentPage = 1;
+
+        const firstPage = await pdfDoc.getPage(1);
+        const vp1 = firstPage.getViewport({ scale: 1 });
+        const containerWidth = Math.min(1100, Math.max(700, window.innerWidth*0.8));
+        const fitScale = Math.min(2.0, containerWidth / vp1.width);
+        scale = Math.max(0.7, Math.min(1.5, fitScale));
+
+        console.log('Rendering first page...');
+        await renderPage(currentPage);
+        console.log('First page rendered successfully');
+        
+        // Update page info
+        pageInfo.textContent = `Page ${currentPage} / ${pdfDoc.numPages} · ${Math.round(scale*100)}%`;
+      } catch (pdfError) {
+        console.error('PDF processing error:', pdfError);
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillText('PDF processing failed', canvas.width / 2, 280);
+        ctx.fillText('Error: ' + pdfError.message, canvas.width / 2, 320);
+        pageInfo.textContent = 'PDF processing failed';
+      }
+    } catch (err) {
+      console.error('load error', err);
+      pageInfo.textContent = 'Error loading PDF';
+      
+      // Fallback: show file info even if PDF loading fails
+      noPdf.style.display = 'none';
+      canvas.style.display = 'block';
+      
+      // Set canvas size for fallback display
+      canvas.width = 800;
+      canvas.height = 600;
+      canvas.style.width = '800px';
+      canvas.style.height = '600px';
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#333';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('PDF loading failed', canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillText('File: ' + file.name, canvas.width / 2, canvas.height / 2 + 10);
+      ctx.fillText('Size: ' + (file.size / 1024).toFixed(1) + ' KB', canvas.width / 2, canvas.height / 2 + 40);
+      ctx.fillText('Error: ' + err.message, canvas.width / 2, canvas.height / 2 + 70);
+    }
+  });
+
+  // Navigation & zoom
+  prevPageBtn.addEventListener('click', async () => {
+    console.log('Previous page button clicked');
+    if (!pdfDoc || currentPage <= 1) {
+      console.log('Cannot go to previous page');
+      pageInfo.textContent = 'No PDF loaded or already at first page';
+      return;
+    }
+    currentPage--;
+    console.log('Going to page:', currentPage);
+    await renderPage(currentPage);
+  });
+  nextPageBtn.addEventListener('click', async () => {
+    console.log('Next page button clicked');
+    if (!pdfDoc || currentPage >= pdfDoc.numPages) {
+      console.log('Cannot go to next page');
+      pageInfo.textContent = 'No PDF loaded or already at last page';
+      return;
+    }
+    currentPage++;
+    console.log('Going to page:', currentPage);
+    await renderPage(currentPage);
+  });
+  zoomInBtn.addEventListener('click', async () => {
+    console.log('Zoom in button clicked');
+    if (!pdfDoc) {
+      pageInfo.textContent = 'No PDF loaded';
+      return;
+    }
+    scale = Math.min(MAX_SCALE, +(scale * 1.15).toFixed(3));
+    console.log('New scale:', scale);
+    await renderPage(currentPage);
+  });
+  zoomOutBtn.addEventListener('click', async () => {
+    console.log('Zoom out button clicked');
+    if (!pdfDoc) {
+      pageInfo.textContent = 'No PDF loaded';
+      return;
+    }
+    scale = Math.max(MIN_SCALE, +(scale / 1.15).toFixed(3));
+    console.log('New scale:', scale);
+    await renderPage(currentPage);
+  });
+
+  // Keyboard support
+  window.addEventListener('keydown', (ev) => {
+    if (!pdfDoc) return;
+    if (ev.key === 'ArrowRight') nextPageBtn.click();
+    if (ev.key === 'ArrowLeft') prevPageBtn.click();
+    if (ev.key === '+') zoomInBtn.click();
+    if (ev.key === '-') zoomOutBtn.click();
+  });
+
+  // Test button functionality
+  testBtn.addEventListener('click', () => {
+    console.log('Test button clicked!');
+    pageInfo.textContent = 'Test button works! 🎉';
+    
+    // Test canvas functionality
+    noPdf.style.display = 'none';
+    canvas.style.display = 'block';
+    canvas.width = 400;
+    canvas.height = 300;
+    canvas.style.width = '400px';
+    canvas.style.height = '300px';
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillRect(50, 50, 300, 200);
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Test Successful!', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('Canvas is working', canvas.width / 2, canvas.height / 2 + 40);
+    
+    setTimeout(() => {
+      pageInfo.textContent = 'No PDF loaded';
+      noPdf.style.display = 'block';
+      canvas.style.display = 'none';
+    }, 3000);
+  });
+
+  // Drag & drop for viewer
+  canvasContainer.addEventListener('drop', (ev) => {
+    ev.preventDefault();
+    if (ev.dataTransfer.files && ev.dataTransfer.files[0]) {
+      fileInput.files = ev.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+  canvasContainer.addEventListener('dragover', (ev)=> ev.preventDefault());
+
+  // Funny PDF Generator functionality
+  const funnyFileInput = document.getElementById('funnyFileInput');
+  const styleSelect = document.getElementById('styleSelect');
+  const catEvery = document.getElementById('catEvery');
+  const enableEmoji = document.getElementById('enableEmoji');
+  const enableCats = document.getElementById('enableCats');
+  const enableAI = document.getElementById('enableAI');
+  const generateBtn = document.getElementById('generateFunny');
+  const status = document.getElementById('status');
+  const loading = document.getElementById('loading');
+
+  function showStatus(message, type = 'info') {
+    status.textContent = message;
+    status.className = `status ${type}`;
+    status.style.display = 'block';
+    setTimeout(() => {
+      status.style.display = 'none';
+    }, 5000);
+  }
+
+  generateBtn.addEventListener('click', async () => {
+    const file = funnyFileInput.files[0];
+    if (!file) {
+      showStatus('Please select a PDF file first!', 'error');
+      return;
+    }
+
+    if (!file.type.includes('pdf')) {
+      showStatus('Please select a valid PDF file!', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('style', styleSelect.value);
+    formData.append('cats', enableCats.checked.toString());
+    formData.append('emoji', enableEmoji.checked.toString());
+    formData.append('ai', enableAI.checked ? 'openai' : 'none');
+    formData.append('catEvery', catEvery.value);
+
+    try {
+      loading.style.display = 'block';
+      generateBtn.disabled = true;
+      generateBtn.textContent = '🔄 Processing...';
+
+      const response = await fetch('/api/funnyify', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate funny PDF');
+      }
+
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `funny_${file.name}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      showStatus('🎉 Funny PDF generated successfully! Check your downloads.', 'success');
+      funnyFileInput.value = '';
+    } catch (error) {
+      console.error('Error:', error);
+      showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+      loading.style.display = 'none';
+      generateBtn.disabled = false;
+      generateBtn.textContent = '🎭 Generate Funny PDF!';
+    }
+  });
+
+     // Drag & drop for funny generator
+   document.getElementById('funny').addEventListener('drop', (ev) => {
+     ev.preventDefault();
+     if (ev.dataTransfer.files && ev.dataTransfer.files[0]) {
+       funnyFileInput.files = ev.dataTransfer.files;
+     }
+   });
+   document.getElementById('funny').addEventListener('dragover', (ev) => ev.preventDefault());
+  } // Close initializePDFViewer function
+   </script>
 </body>
 </html>

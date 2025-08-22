@@ -54,7 +54,7 @@ app.post("/api/funnyify", upload.single("file"), (req, res) => {
   const ai = req.body.ai || "none"; // none | openai
   const catEvery = req.body.catEvery || "4"; // insert cat every N paragraphs
 
-  const py = spawn(process.env.PYTHON_BIN || "python3", [
+  const py = spawn(process.env.PYTHON_BIN || "py -3.12", [
     path.join(__dirname, "funnyify.py"),
     "--in", inputPath,
     "--out", outputPath,
