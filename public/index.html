@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaotic PDF Reader</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>Chaotic PDF Reader 🤡📄</h1>
+    <form id="uploadForm">
+      <label class="file">
+        <input id="file" type="file" accept="application/pdf" required />
+      </label>
+
+      <div class="row">
+        <label>Style:
+          <select id="style">
+            <option value="mild">mild</option>
+            <option value="spicy">spicy</option>
+            <option value="chaotic">chaotic</option>
+          </select>
+        </label>
+        <label>Cat every N paras:
+          <input id="catEvery" type="number" value="4" min="1" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label><input id="cats" type="checkbox" checked /> Insert cats</label>
+        <label><input id="emoji" type="checkbox" checked /> Sprinkle emojis</label>
+        <label><input id="useAI" type="checkbox" /> Use AI rewrite (requires server key)</label>
+      </div>
+
+      <button type="submit">Make it funny</button>
+    </form>
+
+    <div id="status" class="muted"></div>
+
+    <div id="result" class="result hidden">
+      <a id="download" download="funny.pdf">⬇ Download Funny PDF</a>
+      <iframe id="preview" title="Preview" frameborder="0"></iframe>
+    </div>
+  </div>
+  <script src="/client.js"></script>
+</body>
+</html>

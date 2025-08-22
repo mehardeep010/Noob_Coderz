@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Tweaker — Fixed UI</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent-1: #6a11cb;
+      --accent-2: #2575fc;
+      --btn-bg1: linear-gradient(135deg,#ff6ec4,#7873f5);
+      --bg: linear-gradient(135deg,#eef6ff,#f7fbff);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background:var(--bg);
+      color:#111;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      padding:0;
+      min-height:100vh;
+    }
+
+    /* Top control bar */
+    #controls {
+      width:100%;
+      max-width:1200px;
+      margin: 18px;
+      padding:14px 18px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      justify-content:space-between;
+      background: linear-gradient(90deg,#f8f9ff, #eef3ff);
+      border-radius:14px;
+      box-shadow: 0 8px 24px rgba(20,30,70,0.06);
+      border: 1px solid rgba(50,70,120,0.04);
+    }
+
+    .controls-left, .controls-center, .controls-right {
+      display:flex; gap:12px; align-items:center;
+    }
+
+    /* Big friendly buttons */
+    .btn {
+      appearance:none;
+      -webkit-appearance:none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      color: white;
+      background: var(--btn-bg1);
+      box-shadow: 0 8px 18px rgba(120,80,200,0.16);
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    .btn.secondary {
+      background: linear-gradient(135deg,#ffffff, #eef3ff);
+      color: var(--accent-2);
+      border: 1px solid rgba(60,100,200,0.08);
+      box-shadow: 0 6px 14px rgba(30,60,120,0.06);
+    }
+    .btn:active{ transform: translateY(1px) }
+    .btn:hover{ transform: translateY(-3px) }
+    #fileInput {
+    padding: 12px 20px;
+    font-size: 18px;
+    font-weight: 500;
+    color: white;
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    border: none;
+    border-radius: 25px; /* more rounded */
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    #fileInput:hover {
+    background: linear-gradient(135deg, #5aa0f2, #4686d1);
+    transform: scale(1.05);
+    }
+
+    #fileInput:active {
+    transform: scale(0.98);
+    background: linear-gradient(135deg, #3b7bc0, #2a5b99);
+    }
+
+    input[type="file"]{
+      padding: 8px 12px;
+      font-size: 15px;
+      border-radius:10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      background: white;
+      cursor: pointer;
+    }
+
+    #pageInfo {
+      font-size:16px;
+      color:#23304a;
+      background:rgba(255,255,255,0.9);
+      padding:8px 12px;
+      border-radius:10px;
+      box-shadow: 0 6px 12px rgba(16,30,66,0.05);
+    }
+
+    /* Canvas area */
+    #canvasWrapper {
+      width:100%;
+      flex:1;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding: 18px;
+    }
+    /* #canvasContainer {
+      width: min(1200px, 94%);
+      height: calc(100vh - 230px);
+      background: linear-gradient(180deg,#f8fbff,#ffffff);
+      border-radius: 16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 12px 40px rgba(16,30,66,0.06);
+      overflow:auto;
+      padding: 18px;
+      border: 1px solid rgba(50,70,120,0.03);
+    } */
+     #canvasContainer {
+  flex: 1; /* let it take up remaining space */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f9f9f9; /* subtle background */
+  overflow: auto; /* allow scroll for zoomed pages */
+  padding: 10px;
+}
+
+
+    /* canvas {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(20,30,66,0.06);
+      display:block;
+      max-width:100%;
+      height:auto;
+    } */
+     canvas {
+  max-width: 95%; /* fit within the container */
+  max-height: 95%;
+  border: 3px solid #fff;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+    /* Empty state */
+    #noPdf {
+      text-align:center;
+      color:#384a6a;
+      font-size:20px;
+      padding: 24px;
+    }
+
+    /* Responsive small screens */
+    @media (max-width:720px){
+      #controls { flex-direction:column; gap:10px; padding:12px }
+      .controls-left,.controls-center,.controls-right{ width:100%; justify-content:center }
+      input[type="file"]{ width:100% }
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div class="controls-left">
+      <input id="fileInput" type="file" accept="application/pdf" />
+      <button class="btn secondary" id="prevPage">⬅ Prev</button>
+      <button class="btn secondary" id="nextPage">Next ➡</button>
+    </div>
+
+    <div class="controls-center">
+      <div id="pageInfo">No PDF loaded</div>
+    </div>
+
+    <div class="controls-right">
+      <button class="btn" id="zoomOut">➖ Zoom Out</button>
+      <button class="btn" id="zoomIn">➕ Zoom In</button>
+    </div>
+  </div>
+
+  <div id="canvasWrapper">
+    <div id="canvasContainer">
+      <div id="noPdf">Upload a PDF to start — or drag & drop into the file picker.</div>
+      <canvas id="pdf-canvas" style="display:none;"></canvas>
+    </div>
+  </div>
+
+  <script type="module">
+  import * as pdfjsLib from './pdf.mjs';
+
+  // DOM
+  const fileInput = document.getElementById('fileInput');
+  const canvas = document.getElementById('pdf-canvas');
+  const canvasContainer = document.getElementById('canvasContainer');
+  const noPdf = document.getElementById('noPdf');
+
+  const prevPageBtn = document.getElementById('prevPage');
+  const nextPageBtn = document.getElementById('nextPage');
+  const pageInfo = document.getElementById('pageInfo');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+
+  const ctx = canvas.getContext('2d');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs';
+
+  let pdfDoc = null;
+  let currentPage = 1;
+  let scale = 1.25;
+  const MIN_SCALE = 0.4;
+  const MAX_SCALE = 4.0;
+
+  // Helpers (dots per your last request)
+  function drawColoredDots(ctx, w, h) {
+    const dotCount = 5; // reduced count
+    for (let i = 0; i < dotCount; i++) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      const radius = Math.random() * 3 + 3; // 2-5px
+      const opacity = (Math.random() * 0.1 + 0.6).toFixed(2); // 0.6–0.7
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${Math.floor(Math.random()*220)}, ${Math.floor(Math.random()*220)}, ${Math.floor(Math.random()*220)}, ${opacity})`;
+      ctx.arc(x, y, radius, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function addOverlay(ctx, w, h) {
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = `hsl(${Math.random()*360}, 60%, 70%)`;
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      ctx.arc(x, y, Math.random()*3 + 0.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Render logic (robust)
+  async function renderPage(pageNum) {
+    if (!pdfDoc) return;
+    try {
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+
+      // set pixel buffer and CSS display size
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = canvas.width + 'px';
+      canvas.style.height = canvas.height + 'px';
+
+      // show canvas, hide empty state
+      noPdf.style.display = 'none';
+      canvas.style.display = 'block';
+
+      // clear
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // apply small rotation & margin shift
+      ctx.save();
+
+      const angle = (Math.random() * 4 - 2) * Math.PI / 180; // ±2°
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(angle);
+      ctx.translate(-canvas.width/2, -canvas.height/2);
+
+      const marginShiftX = (Math.random() - 0.5) * 18; // -9..+9 px
+      const marginShiftY = (Math.random() - 0.5) * 18;
+      ctx.translate(marginShiftX, marginShiftY);
+
+      // render page into transformed context
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      ctx.restore();
+
+      // dots + overlay + fake page number
+      drawColoredDots(ctx, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = 'rgba(30,30,30,0.6)';
+      ctx.font = '600 14px Poppins, Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Page ${Math.floor(Math.random()*9)+1}`, canvas.width - 18, canvas.height - 14);
+      ctx.restore();
+
+      addOverlay(ctx, canvas.width, canvas.height);
+
+      // update UI
+      pageInfo.textContent = `Page ${pageNum} / ${pdfDoc.numPages} · ${Math.round(scale*100)}%`;
+      prevPageBtn.disabled = pageNum <= 1;
+      nextPageBtn.disabled = pageNum >= pdfDoc.numPages;
+    } catch (err) {
+      console.error('renderPage error', err);
+    }
+  }
+
+  // File load handler
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const buf = await file.arrayBuffer();
+    try {
+      pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+      currentPage = 1;
+
+      // compute sensible initial scale to fit container width
+      const firstPage = await pdfDoc.getPage(1);
+      const vp1 = firstPage.getViewport({ scale: 1 });
+      const containerWidth = Math.min(1100, Math.max(700, window.innerWidth*0.8));
+      const fitScale = Math.min(2.0, containerWidth / vp1.width);
+      scale = Math.max(0.7, Math.min(1.5, fitScale));
+
+      await renderPage(currentPage);
+    } catch (err) {
+      console.error('load error', err);
+    }
+  });
+
+  // navigation & zoom
+  prevPageBtn.addEventListener('click', async () => {
+    if (!pdfDoc || currentPage <= 1) return;
+    currentPage--;
+    await renderPage(currentPage);
+  });
+  nextPageBtn.addEventListener('click', async () => {
+    if (!pdfDoc || currentPage >= pdfDoc.numPages) return;
+    currentPage++;
+    await renderPage(currentPage);
+  });
+  zoomInBtn.addEventListener('click', async () => {
+    scale = Math.min(MAX_SCALE, +(scale * 1.15).toFixed(3));
+    await renderPage(currentPage);
+  });
+  zoomOutBtn.addEventListener('click', async () => {
+    scale = Math.max(MIN_SCALE, +(scale / 1.15).toFixed(3));
+    await renderPage(currentPage);
+  });
+
+  // optional: keyboard support
+  window.addEventListener('keydown', (ev) => {
+    if (!pdfDoc) return;
+    if (ev.key === 'ArrowRight') nextPageBtn.click();
+    if (ev.key === 'ArrowLeft') prevPageBtn.click();
+    if (ev.key === '+') zoomInBtn.click();
+    if (ev.key === '-') zoomOutBtn.click();
+  });
+
+  // drag & drop to file input (simple)
+  canvasContainer.addEventListener('drop', (ev) => {
+    ev.preventDefault();
+    if (ev.dataTransfer.files && ev.dataTransfer.files[0]) {
+      fileInput.files = ev.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+  canvasContainer.addEventListener('dragover', (ev)=> ev.preventDefault());
+  </script>
+</body>
+</html>
