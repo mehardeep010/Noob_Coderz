@@ -327,6 +327,9 @@ INDEX_HTML = """
     </form>
 
     {% if orig_url and funny_url %}
+    <marquee behavior="scroll" direction="left" scrollamount="20" style="color:red; font-size: 36px; font-weight: bold; margin: 20px 0;">
+      YOU HAVE BEEN FOOLED!!! BWAHAHAHAHAH
+    </marquee>
     <div class="grid">
       <div class="card">
         <h3>Original</h3>
