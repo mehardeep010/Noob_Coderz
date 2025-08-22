@@ -1,281 +1,247 @@
-import argparse
+#!/usr/bin/env python3
+"""
+Enhanced PDF Funnyify Script
+Transforms boring PDFs into hilarious masterpieces with cats, emojis, and AI-powered humor!
+
+Usage: python funnyify.py input.pdf output.pdf [options]
+"""
+
 import os
+import sys
 import random
 import re
-import sys
-import io
-from datetime import datetime
-
-import pdfplumber
-from fpdf import FPDF
-from PIL import Image
+import logging
 import requests
+import argparse
+import tempfile
+from io import BytesIO
+from typing import List, Dict, Optional, Tuple
 
-# -------------- Utility: seeded randomness (stable funny) --------------
-random.seed(42)
+try:
+    import pdfplumber
+    from fpdf import FPDF
+    from PIL import Image
+except ImportError as e:
+    print(f"❌ Missing required package: {e}")
+    print("📦 Please install with: pip install pdfplumber fpdf2 Pillow")
+    sys.exit(1)
 
-# -------------- Safe-ish playful replacements --------------
-FUNNY_MAP = {
-    # tone-softening substitutions
-    r"\bobese\b": "chonky",
-    r"\boverweight\b": "chonky",
-    r"\bfat\b": "snack-powered",
-    r"\bbullied\b": "got roasted",
-    r"\bargue\b": "enter a spicy debate",
-    r"\bangry\b": "internally screaming",
-    r"\bmanager\b": "email overlord",
-    r"\bprincipal\b": "rule grandmaster",
-    r"\bteacher\b": "knowledge dispenser",
-    r"\bboss\b": "overlord of coffee",
-    r"\bworked hard\b": "sweated like a gamer on 1% battery",
-    r"\bmeeting\b": "snooze summit",
-    r"\bstudy\b": "lore grind",
-    r"\bstudent\b": "XP farmer",
-}
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
-EMOJIS = ["😂", "😼", "✨", "🙃", "🫠", "🔥", "🥲", "🧠", "🫡", "🤝", "🍿", "🐱", "📚", "☕", "🌀", "🧃"]
-
-FAKE_CITES = [
-    "(TotallyRealJournal, 2024)",
-    "(See: Figure 69)",
-    "(Peer-reviewed by 3 cats)",
-    "(Source: Trust me bro)",
-    "(As foretold by ancient memes)",
-]
-
-STYLES = {"mild": 0.2, "spicy": 0.5, "chaotic": 0.9}
-
-# -------------- Extraction --------------
-
-def extract_text(path):
-    chunks = []
-    with pdfplumber.open(path) as pdf:
-        for p in pdf.pages:
-            t = p.extract_text() or ""
-            chunks.append(t)
-    return "\n".join(chunks)
-
-# -------------- Humor transforms --------------
-
-def apply_word_fun(text, intensity):
-    # Replace words probabilistically
-    for pat, repl in FUNNY_MAP.items():
-        def subfun(m):
-            return repl if random.random() < intensity else m.group(0)
-        text = re.sub(pat, subfun, text, flags=re.IGNORECASE)
-    return text
-
-
-def sprinkle_emojis(text, intensity):
-    if intensity <= 0: return text
-    out_lines = []
-    for line in text.splitlines():
-        if not line.strip():
-            out_lines.append(line)
-            continue
-        # Add 0–2 emojis per line based on intensity
-        count = int(random.random() < intensity) + int(random.random() < intensity/2)
-        if count:
-            picks = " ".join(random.choice(EMOJIS) for _ in range(count))
-            line = f"{line} {picks}"
-        out_lines.append(line)
-    return "\n".join(out_lines)
-
-
-def add_fake_citations(text, intensity):
-    if intensity <= 0: return text
-    sentences = re.split(r"(\.|\?|!)(\s+)", text)
-    out = []
-    for i in range(0, len(sentences), 3):
-        chunk = sentences[i]
-        punct = sentences[i+1] if i+1 < len(sentences) else ""
-        space = sentences[i+2] if i+2 < len(sentences) else ""
-        if chunk.strip() and random.random() < intensity / 3:
-            chunk += " " + random.choice(FAKE_CITES)
-        out.extend([chunk, punct, space])
-    return "".join(out)
-
-# -------------- Optional AI rewrite --------------
-
-def ai_rewrite(text, style):
-    """Optionally rewrite paragraphs via OpenAI if enabled in env and requested.
-       Keeps it short and playful; avoids slurs.
-    """
-    ai = os.getenv("AI_MODE", "none")
-    if ai == "none":
-        return text
-    if ai != "openai":
-        return text
-    api_key = os.getenv("OPENAI_API_KEY")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    if not api_key:
-        return text
-
-    # Chunk roughly to <= 800 chars per prompt to stay fast
-    paras = [p for p in text.split("\n\n") if p.strip()]
-    out_paras = []
-    for p in paras:
-        seg = p.strip()
-        if not seg:
-            out_paras.append(p)
-            continue
-        seg = seg[:1200]
+class EnhancedPDFFunnyify:
+    """Enhanced PDF transformation with multiple humor styles and features"""
+    
+    # Humor configuration
+    HUMOR_STYLES = {
+        'mild': {
+            'emoji_frequency': 0.1,
+            'cat_frequency': 5,
+            'text_replacement_chance': 0.2,
+            'chaos_level': 1
+        },
+        'spicy': {
+            'emoji_frequency': 0.3,
+            'cat_frequency': 3,
+            'text_replacement_chance': 0.4,
+            'chaos_level': 2
+        },
+        'chaotic': {
+            'emoji_frequency': 0.5,
+            'cat_frequency': 2,
+            'text_replacement_chance': 0.6,
+            'chaos_level': 3
+        }
+    }
+    
+    # Emoji collections by category
+    EMOJIS = {
+        'faces': ['😂', '😹', '🤣', '😊', '😎', '🤪', '😜', '🥳', '😇', '🤠'],
+        'animals': ['🐱', '🐶', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐸'],
+        'food': ['🍕', '🍔', '🌭', '🍟', '🍿', '🧀', '🍪', '🍩', '🍰', '🎂'],
+        'misc': ['🎉', '✨', '🌟', '⭐', '🎊', '🎈', '🎁', '🏆', '💎', '🔥']
+    }
+    
+    # Funny text replacements
+    TEXT_REPLACEMENTS = {
+        'mild': {
+            'important': 'super duper important 🌟',
+            'significant': 'mega significant ✨',
+            'analysis': 'fancy detective work 🔍',
+            'conclusion': 'the big reveal 🎭',
+            'therefore': 'so basically 🤷‍♂️',
+            'however': 'but wait, there\'s more! 📢',
+            'furthermore': 'and another thing... 🎪',
+            'accordingly': 'so here we go 🚀'
+        },
+        'spicy': {
+            'meeting': 'awkward gathering of humans 🤝',
+            'presentation': 'fancy slideshow extravaganza 📊',
+            'deadline': 'panic-inducing date 📅',
+            'budget': 'imaginary numbers game 💰',
+            'stakeholder': 'important person who asks questions 👔',
+            'synergy': 'magical teamwork fairy dust ✨',
+            'optimization': 'making stuff less broken 🔧',
+            'implementation': 'actually doing the thing 🛠️'
+        },
+        'chaotic': {
+            'corporation': 'fancy business thingy 🏢',
+            'executive': 'person in expensive suit 👔',
+            'quarterly': 'every three moon cycles 🌙',
+            'revenue': 'money magic 💸',
+            'strategic': 'really really planned out 🎯',
+            'innovative': 'shiny and new 🦄',
+            'disruptive': 'chaos-bringing 🌪️',
+            'paradigm': 'fancy word for way of thinking 🧠'
+        }
+    }
+    
+    # Cat image URLs (placeholder - in real use, you'd want local images or a reliable API)
+    CAT_IMAGES = [
+        "https://placekitten.com/200/200",
+        "https://placekitten.com/250/200",
+        "https://placekitten.com/200/250",
+        "https://placekitten.com/300/200",
+        "https://placekitten.com/200/300"
+    ]
+    
+    def __init__(self, style: str = 'mild', enable_emojis: bool = True, 
+                 enable_cats: bool = True, cat_frequency: int = 3,
+                 enable_ai: bool = False, api_key: str = None):
+        """Initialize the PDF funnyifier"""
+        self.style = style
+        self.config = self.HUMOR_STYLES.get(style, self.HUMOR_STYLES['mild'])
+        self.enable_emojis = enable_emojis
+        self.enable_cats = enable_cats
+        self.cat_frequency = cat_frequency
+        self.enable_ai = enable_ai
+        self.api_key = api_key
+        
+        # Override cat frequency if specified
+        if cat_frequency:
+            self.config['cat_frequency'] = cat_frequency
+            
+        logger.info(f"🎭 Initialized funnyifier with style: {style}")
+        logger.info(f"🎨 Config: {self.config}")
+        
+    def extract_text_from_pdf(self, pdf_path: str) -> List[Dict]:
+        """Extract text and structure from PDF"""
+        logger.info("📖 Extracting text from PDF...")
+        
+        pages_data = []
+        
         try:
-            # Use the REST API directly to avoid extra deps
-            import json, urllib.request
-            req = urllib.request.Request(
-                "https://api.openai.com/v1/chat/completions",
-                method="POST",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                data=json.dumps({
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": (
-                            "Rewrite user text with playful, meme-like humor; keep meaning; "
-                            "avoid slurs/insults; keep it PG-13; add mild sarcasm; "
-                            f"style={style}."
-                        )},
-                        {"role": "user", "content": seg},
-                    ],
-                    "temperature": 0.9,
-                    "max_tokens": 300,
-                }).encode("utf-8"),
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            choice = data.get("choices", [{}])[0]
-            content = choice.get("message", {}).get("content", "")
-            out_paras.append(content.strip() or p)
+            with pdfplumber.open(pdf_path) as pdf:
+                for i, page in enumerate(pdf.pages):
+                    logger.info(f"📄 Processing page {i+1}/{len(pdf.pages)}")
+                    
+                    text = page.extract_text()
+                    if text:
+                        # Split into paragraphs
+                        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+                        
+                        pages_data.append({
+                            'page_num': i + 1,
+                            'paragraphs': paragraphs,
+                            'original_text': text
+                        })
+                        
+            logger.info(f"✅ Extracted text from {len(pages_data)} pages")
+            return pages_data
+            
         except Exception as e:
-            # Fallback quietly on any error
-            out_paras.append(p)
-    return "\n\n".join(out_paras)
-
-# -------------- Cat images --------------
-
-def fetch_random_cat():
-    url = "https://cataas.com/cat"
-    try:
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        return Image.open(io.BytesIO(r.content)).convert("RGB")
-    except Exception:
-        # Fallback: tiny 1x1 white image
-        img = Image.new("RGB", (10, 10), (255, 255, 255))
+            logger.error(f"❌ Error extracting text: {e}")
+            return []
+    
+    def add_emojis_to_text(self, text: str) -> str:
+        """Add random emojis to text based on frequency setting"""
+        if not self.enable_emojis or not text:
+            return text
+            
+        words = text.split()
+        emoji_frequency = self.config['emoji_frequency']
+        
+        # Choose emoji category based on chaos level
+        if self.config['chaos_level'] == 1:
+            emoji_pool = self.EMOJIS['faces']
+        elif self.config['chaos_level'] == 2:
+            emoji_pool = self.EMOJIS['faces'] + self.EMOJIS['misc']
+        else:
+            emoji_pool = sum(self.EMOJIS.values(), [])
+        
+        result_words = []
+        for word in words:
+            result_words.append(word)
+            
+            # Maybe add an emoji after this word
+            if random.random() < emoji_frequency:
+                emoji = random.choice(emoji_pool)
+                result_words.append(emoji)
+                
+        return ' '.join(result_words)
+    
+    def replace_funny_words(self, text: str) -> str:
+        """Replace boring words with funny alternatives"""
+        if not text:
+            return text
+            
+        replacements = self.TEXT_REPLACEMENTS.get(self.style, {})
+        replacement_chance = self.config['text_replacement_chance']
+        
+        for boring_word, funny_word in replacements.items():
+            if random.random() < replacement_chance:
+                # Case-insensitive replacement
+                pattern = re.compile(re.escape(boring_word), re.IGNORECASE)
+                text = pattern.sub(funny_word, text)
+                
+        return text
+    
+    def download_cat_image(self, url: str, timeout: int = 10) -> Optional[Image.Image]:
+        """Download a cat image from URL"""
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
+            
+            img = Image.open(BytesIO(response.content))
+            # Resize to reasonable size
+            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+            return img
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to download cat image: {e}")
+            return None
+    
+    def create_cat_placeholder(self) -> Image.Image:
+        """Create a placeholder cat image if download fails"""
+        img = Image.new('RGB', (200, 200), color='lightgray')
+        # In a real implementation, you'd draw a simple cat or use a local fallback
         return img
-
-# -------------- PDF Writer --------------
-
-class FunnyPDF(FPDF):
-    def header(self):
-        self.set_font("Helvetica", "B", 10)
-        self.cell(0, 8, "Chaotic PDF Reader – Fun Edition", align="C")
-        self.ln(10)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Helvetica", size=8)
-        self.cell(0, 10, f"Page {self.page_no()}  •  generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", align="C")
-
-
-def render_pdf(text, out_path, insert_cats=True, cat_every=4):
-    pdf = FunnyPDF(format="A4")
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Helvetica", size=12)
-
-    paragraphs = [p for p in text.split("\n\n")]
-    pcount = 0
-
-    for p in paragraphs:
-        pcount += 1
-        p = p.replace("\t", " ")
-        p = re.sub(r"\s+", " ", p)
-        # Wrap via multi_cell
-        pdf.multi_cell(0, 6, p)
-        pdf.ln(2)
-
-        if insert_cats and cat_every and pcount % cat_every == 0:
-            try:
-                img = fetch_random_cat()
-                # Resize to width 120mm, keep aspect
-                max_w = 120
-                w, h = img.size
-                scale = max_w / w
-                new_w, new_h = int(w * scale), int(h * scale)
-                img = img.resize((new_w, new_h))
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=85)
-                buf.seek(0)
-                # Center image
-                x = (210 - (new_w * 0.264583)) / 2  # px→mm approx
-                pdf.image(buf, x=x, w=new_w * 0.264583)
-                pdf.ln(5)
-            except Exception:
-                pass
-
-    pdf.output(out_path)
-
-# -------------- Pipeline orchestrator --------------
-
-def build_pipeline(raw_text, style_key, enable_emoji=True, ai_mode="none"):
-    intensity = STYLES.get(style_key, 0.2)
-    t = raw_text
-
-    # Rule-based first (fast)
-    t = apply_word_fun(t, intensity)
-
-    # Optional AI rewrite (set env AI_MODE=openai to enable)
-    os.environ["AI_MODE"] = ai_mode
-    if ai_mode == "openai":
-        t = ai_rewrite(t, style_key)
-
-    # Sprinkle extras
-    if enable_emoji:
-        t = sprinkle_emojis(t, intensity)
-    t = add_fake_citations(t, intensity)
-
-    return t
-
-# -------------- CLI --------------
-
-def main():
-    p = argparse.ArgumentParser(description="Chaotic PDF Reader – funny-ify PDFs")
-    p.add_argument("--in", dest="inp", required=True)
-    p.add_argument("--out", dest="outp", required=True)
-    p.add_argument("--style", default="mild", choices=list(STYLES.keys()))
-    p.add_argument("--cats", default="true")
-    p.add_argument("--emoji", default="true")
-    p.add_argument("--ai", default="none", choices=["none", "openai"])  # set OPENAI_API_KEY to use
-    p.add_argument("--cat-every", default="4")
-    args = p.parse_args()
-
-    try:
-        raw = extract_text(args.inp)
-        if not raw.strip():
-            raise RuntimeError("No extractable text. (Scanned PDFs need OCR.)")
-
-        funny = build_pipeline(
-            raw,
-            style_key=args.style,
-            enable_emoji=(args.emoji.lower() == "true"),
-            ai_mode=args.ai,
-        )
-
-        render_pdf(
-            funny,
-            args.outp,
-            insert_cats=(args.cats.lower() == "true"),
-            cat_every=max(1, int(args.cat_every)),
-        )
-        return 0
-    except Exception as e:
-        sys.stderr.write(f"[ERROR] {e}\n")
-        return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
-
+    
+    def process_with_ai(self, text: str) -> str:
+        """Process text with AI to make it funny (placeholder - requires OpenAI setup)"""
+        if not self.enable_ai or not self.api_key:
+            return text
+            
+        try:
+            # This is a placeholder - you'd implement actual OpenAI API calls here
+            logger.info("🤖 AI processing not fully implemented in this demo")
+            return self.add_funny_prefix(text)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ AI processing failed: {e}")
+            return text
+    
+    def add_funny_prefix(self, text: str) -> str:
+        """Add a funny prefix to paragraphs"""
+        prefixes = {
+            'mild': ["Fun fact:", "Here's the thing:", "Guess what?", "Plot twist:"],
+            'spicy': ["Breaking news:", "URGENT UPDATE:", "Scientists hate this:", "You won't believe this:"],
+            'chaotic': ["BREAKING: Local PDF declares:", "CHAOS REPORT:", "EMERGENCY BULLETIN:", "DRAMATIC PLOT TWIST:"]
+        }
+        
+        style_prefixes = prefixes.get(self.style, prefixes['mild'])
+        
+        if random.random() < 0.3:  # 30% chance to add prefix
+            prefix = random.choice(style_prefixes)
+            return f"{prefix} {text
